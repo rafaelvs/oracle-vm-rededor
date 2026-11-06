@@ -1,0 +1,52 @@
+name: tentar-vm
+# Fica tentando criar a VM gratuita da Oracle (vaga de ARM em São Paulo é disputada).
+# Quando a VM existe, o próprio job desliga este workflow.
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+concurrency:
+  group: tentar-vm
+  cancel-in-progress: false
+permissions:
+  actions: write
+  contents: read
+jobs:
+  tentar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - name: OCI CLI
+        run: pip install --quiet oci-cli
+      - name: Config
+        env:
+          OCI_KEY: ${{ secrets.OCI_KEY }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+        run: |
+          mkdir -p ~/.oci
+          printf '%s\n' "$OCI_KEY" > ~/.oci/key.pem && chmod 600 ~/.oci/key.pem
+          printf '[DEFAULT]\nuser=%s\nfingerprint=%s\ntenancy=%s\nregion=sa-saopaulo-1\nkey_file=~/.oci/key.pem\n' \
+            "$OCI_USER" "$OCI_FINGERPRINT" "$OCI_TENANCY" > ~/.oci/config
+          chmod 600 ~/.oci/config
+          oci iam region-subscription list --query 'data[0]."region-name"' --raw-output
+      - name: Tentar
+        id: t
+        env:
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+          SSH_PUB: ${{ secrets.SSH_PUB }}
+          OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: "True"
+        run: |
+          set +e
+          bash tentar.sh | tee saida.txt
+          rc=${PIPESTATUS[0]}
+          grep RESULTADO saida.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" = 0 ] || [ "$rc" = 3 ] || exit "$rc"
+      - name: Desligar quando a VM existe
+        if: steps.t.outputs.rc == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable tentar-vm.yml --repo "$GITHUB_REPOSITORY"
