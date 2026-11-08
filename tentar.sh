@@ -30,7 +30,7 @@ echo "$SSH_PUB" > /tmp/pub
 
 n=0
 while [ "$(date +%s)" -lt "$FIM" ]; do
-  for CFG in '{"ocpus":4,"memoryInGBs":24}' '{"ocpus":2,"memoryInGBs":12}'; do
+  for CFG in '{"ocpus":4,"memoryInGBs":24}' '{"ocpus":2,"memoryInGBs":12}' '{"ocpus":1,"memoryInGBs":6}'; do
     n=$((n + 1))
     OUT=$(oci compute instance launch -c "$T" --availability-domain "$AD" --display-name $NOME \
       --shape VM.Standard.A1.Flex --shape-config "$CFG" --image-id "$IMG" --subnet-id "$SN" \
