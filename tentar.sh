@@ -34,7 +34,7 @@ while [ "$(date +%s)" -lt "$FIM" ]; do
     n=$((n + 1))
     OUT=$(oci compute instance launch -c "$T" --availability-domain "$AD" --display-name $NOME \
       --shape VM.Standard.A1.Flex --shape-config "$CFG" --image-id "$IMG" --subnet-id "$SN" \
-      --assign-public-ip true --boot-volume-size-in-gbs 100 --ssh-authorized-keys-file /tmp/pub \
+      --assign-public-ip true --boot-volume-size-in-gbs 100 --ssh-authorized-keys-file /tmp/pub --user-data-file preparar_vm.sh \
       --wait-for-state RUNNING --max-wait-seconds 600 2>&1)
     VM=$(echo "$OUT" | grep -o '"id": "ocid1.instance[^"]*"' | head -1 | cut -d'"' -f4)
     if [ -n "$VM" ]; then
